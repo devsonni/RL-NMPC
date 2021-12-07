@@ -34,7 +34,7 @@ Action:
     Type: Tuple(Discrete(11),Discrete(11))
 
 Reward:
-    Reward is based of error, error is euclidian distance between 
+    Reward is based of error, error is euclidean distance between 
     center of FOV to targets location.
     if Error --> INF then Reward --> -INF
        Error --> 0 then Reward --> INF
@@ -333,9 +333,11 @@ def MPC(w1, w2):
     ss = ca.DM.zeros((3, 801))
     x_e_1 = ca.DM.zeros((801))
     y_e_1 = ca.DM.zeros((801))
+
     global x0
     global xs
     global mpc_iter
+
     xx[:, 0] = x0
     ss[:, 0] = xs
 
@@ -387,7 +389,7 @@ def MPC(w1, w2):
 
             # xx ...
             t2 = time()
-            print(mpc_iter)
+            print("step {} in this episode".format(mpc_iter))
             # print(t2-t1)
             times = np.vstack((
                 times,
@@ -408,7 +410,7 @@ def MPC(w1, w2):
     error1 = np.array(error)
     #print(sum(error1))
     Error = sum(error1)
-    return Error  # mpc functions returns error of specific iteration so agent can calculate reward
+    return Error, x0[0:3]  # mpc functions returns error of specific iteration so agent can calculate reward
 
 
 #################################################################################
@@ -428,43 +430,65 @@ class Tunning(Env):
             dtype=np.float32,
         )
         self.observation_space = Box(-high, high, dtype=np.float32)
+        # Episode length
+        self.episode_length = 50
+
 
     def step(self, action):
 
-        self.state += 1
-        # Reduce shower length by 1 second
-        self.shower_length -= 1
+        # Reduce episode length by 1 step
+        self.episode_length -= 1
 
         # Calculate reward
-        if self.state >= 37 and self.state <= 39:
-            reward = 1
+        if (action[0] == 0 or action[1] ==0):
+            error, obs = MPC(action[0], action[1])
+            print("It's 0, -10 reward")
+            reward = -10
         else:
-            reward = -1
+            error, obs = MPC(action[0],action[1])
+            reward = 1/(2**error)
+            print(reward)
 
-            # Check if shower is done
-        if self.shower_length <= 0:
+        # Check if episode is done or not
+        if self.episode_length <= 0:
             done = True
         else:
             done = False
 
-        # Apply temperature noise
-        # self.state += random.randint(-1,1)
-        # Set placeholder for info
+        # extra info about env
         info = {}
 
         # Return step information
-        return self.state, reward, done, info
+        return obs, reward, done, info
 
     def render(self):
         # Implement viz
         pass
 
     def reset(self):
-        # Reset shower temperature
-        pass
+        # Reset UAV & target to initial position
+        global x0
+        global xs
+        global mpc_iter
+        x0 = [90, 150, 80, 0, 0, 0, 0, 0]
+        xs = [100, 150, 0]
+        mpc_iter = 0
+        self.episode_length = 50
+        return x0, xs
 
 env = Tunning()
 
-# For testing of MPC
-Error = MPC(1, 90)
-print(Error)
+######################### Testing Evn #########################
+
+episodes = 5
+for episode in range(1, episodes + 1):
+    state = env.reset()
+    done = False
+    score = 0
+
+    while not done:
+        # env.render()
+        action = env.action_space.sample()
+        n_state, reward, done, info = env.step(action)
+        score += reward
+    print('Episode:{} Score:{}'.format(episode, score))
