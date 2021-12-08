@@ -431,7 +431,7 @@ class Tunning(Env):
         )
         self.observation_space = Box(-high, high, dtype=np.float32)
         # Episode length
-        self.episode_length = 50
+        self.episode_length = 5
 
 
     def step(self, action):
@@ -446,7 +446,7 @@ class Tunning(Env):
             reward = -10
         else:
             error, obs = MPC(action[0],action[1])
-            reward = 1/(2**error)
+            reward = 1/(error)
             print(reward)
 
         # Check if episode is done or not
@@ -473,13 +473,13 @@ class Tunning(Env):
         x0 = [90, 150, 80, 0, 0, 0, 0, 0]
         xs = [100, 150, 0]
         mpc_iter = 0
-        self.episode_length = 50
+        self.episode_length = 5
         return x0, xs
 
 env = Tunning()
 
 ######################### Testing Evn #########################
-
+"""
 episodes = 5
 for episode in range(1, episodes + 1):
     state = env.reset()
@@ -492,3 +492,81 @@ for episode in range(1, episodes + 1):
         n_state, reward, done, info = env.step(action)
         score += reward
     print('Episode:{} Score:{}'.format(episode, score))
+
+"""
+#################################################################
+########################### Q-learning ##########################
+
+step_size = 6 # Change according to main loop run
+
+qtable = np.zeros((step_size, 11, 11))
+#print(qtable)
+#qtable[2, 2, 3] = 5
+#print(qtable)  np.argmax(qtable[2,:,:])
+#test = 91
+#print((test//10, test%10))
+
+
+
+# Q - learning parameters
+total_episodes = 5            # Total episodes
+learning_rate = 0.8           # Learning rate
+max_steps = 5                 # Max steps per episode
+gamma = 0.95                  # Discounting rate
+
+# Exploration parameters
+epsilon = 1.0                 # Exploration rate
+max_epsilon = 1.0             # Exploration probability at start
+min_epsilon = 0.01            # Minimum exploration probability
+decay_rate = 0.005            # Exponential decay rate for exploration prob
+
+# List of rewards
+rewards = []
+
+# 2 For life or until learning is stopped
+for episode in range(total_episodes):
+    # Reset the environment
+    state = env.reset()
+    step = 0
+    done = False
+    total_rewards = 0
+
+    while not done:
+        # 3. Choose an action a in the current world state (s)
+        ## First we randomize a number
+        exp_exp_tradeoff = random.uniform(0, 1)
+
+        ## If this number > greater than epsilon --> exploitation (taking the biggest Q value for this state)
+        if exp_exp_tradeoff > epsilon:
+            test = np.argmax(qtable[step, :])
+            action = (test//10, test%10)
+
+        # Else doing a random choice --> exploration
+        else:
+            action = env.action_space.sample()
+
+        # Take the action (a) and observe the outcome state(s') and reward (r)
+        new_state, reward, done, info = env.step(action)
+        step = step + 1
+
+        # Update Q(s,a):= Q(s,a) + lr [R(s,a) + gamma * max Q(s',a') - Q(s,a)]
+        # qtable[new_state,:] : all the actions we can take from new state
+        qtable[step-1, action[0], action[1]] = qtable[step-1, action[0], action[1]] + learning_rate * (
+                    reward + gamma * np.max(qtable[step, :, :]) - qtable[step-1, action[0], action[1]])
+
+        total_rewards += reward
+
+
+        # Our new state is state
+        state = new_state
+
+        # If done (if we're dead) : finish episode
+        if done == True:
+            break
+
+    # Reduce epsilon (because we need less and less exploration)
+    epsilon = min_epsilon + (max_epsilon - min_epsilon) * np.exp(-decay_rate * episode)
+    rewards.append(total_rewards)
+
+print("Score over time: " + str(sum(rewards) / total_episodes))
+print(qtable)
