@@ -36,7 +36,7 @@ Action:
 Reward:
     Reward is based of error, error is euclidean distance between 
     center of FOV to targets location.
-    if Error --> INF then Reward --> -INF
+    if Error --> INF then Reward --> 0
        Error --> 0 then Reward --> INF
 
 Initial State:
@@ -80,6 +80,15 @@ def DM2Arr(dm):
 
 def SX2Arr(sx):
     return np.array(sx.full())
+
+def max_index(arr):
+    shape = np.shape(arr)
+    max_indices = (0, 0)
+    for i in range(shape[0]):
+        for k in range (shape[1]):
+            if arr[max_indices] < arr[i, k]:
+                max_indices = (i, k)
+    return max_indices
 
 # main MPC function
 def MPC(w1, w2):
@@ -431,7 +440,7 @@ class Tunning(Env):
         )
         self.observation_space = Box(-high, high, dtype=np.float32)
         # Episode length
-        self.episode_length = 5
+        self.episode_length = 50
 
 
     def step(self, action):
@@ -473,7 +482,7 @@ class Tunning(Env):
         x0 = [90, 150, 80, 0, 0, 0, 0, 0]
         xs = [100, 150, 0]
         mpc_iter = 0
-        self.episode_length = 5
+        self.episode_length = 50
         return x0, xs
 
 env = Tunning()
@@ -497,21 +506,31 @@ for episode in range(1, episodes + 1):
 #################################################################
 ########################### Q-learning ##########################
 
-step_size = 6 # Change according to main loop run
+step_size = 51 # Change according to main loop run
 
 qtable = np.zeros((step_size, 11, 11))
-#print(qtable)
+"""
+print(np.shape(qtable))
+qtable[5, 10, 10] = 50
+qtable[5, 5, 5] = 15
+qtable[5, 1, 10] = 200
+print(qtable[5, :, :])
+#print(np.shape(qtable[5, :, :]))  # gives tuple
+print(max_index(qtable[5, :, :]))
+
+#print(np.argmax(qtable[5, :, :]))
 #qtable[2, 2, 3] = 5
 #print(qtable)  np.argmax(qtable[2,:,:])
 #test = 91
 #print((test//10, test%10))
+"""
 
 
 
 # Q - learning parameters
-total_episodes = 5            # Total episodes
+total_episodes = 500            # Total episodes
 learning_rate = 0.8           # Learning rate
-max_steps = 5                 # Max steps per episode
+max_steps = 50                 # Max steps per episode
 gamma = 0.95                  # Discounting rate
 
 # Exploration parameters
@@ -530,6 +549,7 @@ for episode in range(total_episodes):
     step = 0
     done = False
     total_rewards = 0
+    print("--------We are in episode {}, 50 steps will be run--------".format(episode))
 
     while not done:
         # 3. Choose an action a in the current world state (s)
@@ -538,8 +558,7 @@ for episode in range(total_episodes):
 
         ## If this number > greater than epsilon --> exploitation (taking the biggest Q value for this state)
         if exp_exp_tradeoff > epsilon:
-            test = np.argmax(qtable[step, :])
-            action = (test//10, test%10)
+            action = max_index(qtable[step, :, :])
 
         # Else doing a random choice --> exploration
         else:
@@ -569,4 +588,7 @@ for episode in range(total_episodes):
     rewards.append(total_rewards)
 
 print("Score over time: " + str(sum(rewards) / total_episodes))
-print(qtable)
+
+#for i in range (500):
+#    test = np.argmax(qtable[i, :, :])
+#    print((test//10, test%10))
