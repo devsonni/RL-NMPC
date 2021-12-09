@@ -398,7 +398,7 @@ def MPC(w1, w2):
 
             # xx ...
             t2 = time()
-            print("step {} in this episode".format(mpc_iter))
+            print("step {} in this episode".format(mpc_iter+1))
             # print(t2-t1)
             times = np.vstack((
                 times,
@@ -451,8 +451,8 @@ class Tunning(Env):
         # Calculate reward
         if (action[0] == 0 or action[1] ==0):
             error, obs = MPC(action[0], action[1])
-            print("It's 0, -10 reward")
-            reward = -10
+            print("It's 0, -2 reward")
+            reward = -2
         else:
             error, obs = MPC(action[0],action[1])
             reward = 1/(error)
@@ -528,19 +528,21 @@ print(max_index(qtable[5, :, :]))
 
 
 # Q - learning parameters
-total_episodes = 500            # Total episodes
+total_episodes = 200          # Total episodes
 learning_rate = 0.8           # Learning rate
-max_steps = 50                 # Max steps per episode
+max_steps = 50                # Max steps per episode
 gamma = 0.95                  # Discounting rate
 
 # Exploration parameters
 epsilon = 1.0                 # Exploration rate
 max_epsilon = 1.0             # Exploration probability at start
-min_epsilon = 0.01            # Minimum exploration probability
-decay_rate = 0.005            # Exponential decay rate for exploration prob
+min_epsilon = 0.001           # Minimum exploration probability
+decay_rate = 0.04             # Exponential decay rate for exploration prob
 
 # List of rewards
 rewards = []
+rewardarr = np.zeros((total_episodes,max_steps))
+action_str = np.zeros((max_steps,2))
 
 # 2 For life or until learning is stopped
 for episode in range(total_episodes):
@@ -549,7 +551,7 @@ for episode in range(total_episodes):
     step = 0
     done = False
     total_rewards = 0
-    print("--------We are in episode {}, 50 steps will be run--------".format(episode))
+    print('\n--------We are in episode {}, 50 steps will be run--------\n'.format(episode+1))
 
     while not done:
         # 3. Choose an action a in the current world state (s)
@@ -574,6 +576,7 @@ for episode in range(total_episodes):
                     reward + gamma * np.max(qtable[step, :, :]) - qtable[step-1, action[0], action[1]])
 
         total_rewards += reward
+        rewardarr[episode,step-1] = reward
 
 
         # Our new state is state
@@ -583,12 +586,30 @@ for episode in range(total_episodes):
         if done == True:
             break
 
+        if (episode == (total_episodes-1)):
+            action_str[step-1,0] = action[0]
+            action_str[step-1,1] = action[1]
+
     # Reduce epsilon (because we need less and less exploration)
     epsilon = min_epsilon + (max_epsilon - min_epsilon) * np.exp(-decay_rate * episode)
     rewards.append(total_rewards)
 
-print("Score over time: " + str(sum(rewards) / total_episodes))
+################################################################
+############# Plotting the reward & printing actions ###########
 
-#for i in range (500):
-#    test = np.argmax(qtable[i, :, :])
-#    print((test//10, test%10))
+# Printing actions
+print(action_str)
+
+#plotting rewards
+plt.plot(rewardarr[0,0:max_steps], color = "blue")
+plt.plot(rewardarr[50,0:max_steps], color = "green")
+plt.plot(rewardarr[total_episodes-1,0:max_steps], color = "red")
+plt.legend(loc=4)
+plt.legend(['Initial Episdoe', 'Intermediate Episode', 'Last Episode'])
+
+
+plt.title('Rewards In Each Steps') # Title of the plot
+plt.xlabel('Steps') # X-Label
+plt.ylabel('Rewards') # Y-Label
+
+plt.show()
