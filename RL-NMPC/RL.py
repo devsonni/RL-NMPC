@@ -542,7 +542,23 @@ decay_rate = 0.04             # Exponential decay rate for exploration prob
 # List of rewards
 rewards = []
 rewardarr = np.zeros((total_episodes,max_steps))
-action_str = np.zeros((max_steps,2))
+action_str = np.zeros((max_steps+1,2))
+w_1 = np.zeros((50,200))
+w_2 = np.zeros((50,200))
+
+# Creating x axis and y axis for 3-d surface
+x_s = np.zeros((200))
+y_s = np.zeros((50))
+
+# Plotting calculations
+for i in range(200):
+    x_s[i] = i+1
+
+for i in range(50):
+    y_s[i] = i+1
+
+x, y = np.meshgrid(x_s, y_s)
+
 
 # 2 For life or until learning is stopped
 for episode in range(total_episodes):
@@ -582,32 +598,55 @@ for episode in range(total_episodes):
         # Our new state is state
         state = new_state
 
-        # If done (if we're dead) : finish episode
-        if done == True:
-            break
+        w_1[step-1, episode] = action[0]
+        w_2[step-1, episode] = action[1]
+
 
         if (episode == (total_episodes-1)):
-            action_str[step-1,0] = action[0]
-            action_str[step-1,1] = action[1]
+            action_str[step,0] = action[0]
+            action_str[step,1] = action[1]
 
     # Reduce epsilon (because we need less and less exploration)
     epsilon = min_epsilon + (max_epsilon - min_epsilon) * np.exp(-decay_rate * episode)
     rewards.append(total_rewards)
 
+
+
 ################################################################
 ############# Plotting the reward & printing actions ###########
+last_action = action_str[1:51,0:2]
 
 # Printing actions
-print(action_str)
+print(last_action)
+my_cmap = plt.get_cmap('cool')
+
+#plotting actions evolving over episodes for w_1
+fig = plt.figure(figsize =(14, 9))
+ax = plt.axes(projection ='3d')
+ax.plot_surface(x, y, w_1, cmap=my_cmap)
+# Adding labels
+ax.set_xlabel('Episodes')
+ax.set_ylabel('Steps')
+ax.set_zlabel('Weights (W1)')
+ax.set_title('Weights Evolving Over Episodes')
+
+#plotting actions evolving over episodes for w_2
+fig = plt.figure(figsize =(14, 9))
+ax = plt.axes(projection ='3d')
+ax.plot_surface(x, y, w_2, cmap=my_cmap)
+# Adding labels
+ax.set_xlabel('Episodes')
+ax.set_ylabel('Steps')
+ax.set_zlabel('Weights (W2)')
+ax.set_title('Weights Evolving Over Episodes')
 
 #plotting rewards
+fig = plt.figure()
 plt.plot(rewardarr[0,0:max_steps], color = "blue")
-plt.plot(rewardarr[50,0:max_steps], color = "green")
+plt.plot(rewardarr[0,0:max_steps], color = "green")
 plt.plot(rewardarr[total_episodes-1,0:max_steps], color = "red")
 plt.legend(loc=4)
-plt.legend(['Initial Episdoe', 'Intermediate Episode', 'Last Episode'])
-
-
+plt.legend(['Initial Episode', 'Intermediate Episode', 'Last Episode'])
 plt.title('Rewards In Each Steps') # Title of the plot
 plt.xlabel('Steps') # X-Label
 plt.ylabel('Rewards') # Y-Label
