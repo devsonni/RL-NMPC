@@ -67,7 +67,7 @@ def shift_timestep(T, t0, x0, u, f_u, xs):
         ca.reshape(u[:, -1], -1, 1)
     )
 
-    con_t = [12, 0.04]   # Linear and angular velocity of target
+    con_t = [12, 0.01]   # Linear and angular velocity of target
     f_t_value = ca.vertcat(con_t[0] * cos(xs[2]),
                            con_t[0] * sin(xs[2]),
                            con_t[1])
@@ -95,6 +95,9 @@ def MPC(w1, w2):
     T = 0.2  # discrete step
     N = 15  # number of look ahead steps
 
+    w1 = 1
+    w2 = 2
+    
     # Constrains of UAV with gimbal
     # input constrains of UAV
     v_u_min = 14
@@ -347,10 +350,9 @@ def MPC(w1, w2):
     global xs
     global mpc_iter
 
-    xx[:, 0] = x0
-    ss[:, 0] = xs
+    #xx[:, 0] = x0
+    #ss[:, 0] = xs
 
-    cat_controls = DM2Arr(u0[:, 0])
     times = np.array([[0]])
 
     ###############################################################################
@@ -378,11 +380,6 @@ def MPC(w1, w2):
             u = ca.reshape(sol['x'], n_controls, N)
             ff_value = ff(u, args['p'])
 
-            cat_controls = np.vstack((
-                cat_controls,
-                DM2Arr(u[:, 0])
-            ))
-
             # print(cat_controls)
 
             t = np.vstack((
@@ -391,10 +388,6 @@ def MPC(w1, w2):
             ))
 
             t0, x0, u0, xs = shift_timestep(T, t0, x0, u, f_u, xs)
-
-            # tracking states of target and UAV for plotting
-            xx[:, mpc_iter + 1] = x0
-            ss[:, mpc_iter + 1] = xs
 
             # xx ...
             t2 = time()
@@ -407,18 +400,29 @@ def MPC(w1, w2):
 
             mpc_iter = mpc_iter + 1
 
+            # tracking states of target and UAV for plotting
+            xx[:, mpc_iter] = x0
+            ss[:, mpc_iter] = xs
+
             a_p = (x0[2] * (tan(x0[6] + VFOV / 2)) - x0[2] * tan(x0[6] - VFOV / 2)) / 2  # For plotting FOV
             b_p = (x0[2] * (tan(x0[5] + HFOV / 2)) - x0[2] * tan(x0[5] - HFOV / 2)) / 2
             x_e_1[mpc_iter] = x0[0] + a_p + x0[2] * (tan(x0[6] - VFOV / 2))
             y_e_1[mpc_iter] = x0[1] + b_p + x0[2] * (tan(x0[5] - HFOV / 2))
 
     error = ca.DM.zeros(701)
+    print(x_e_1)
+    print(y_e_1)
+    print(ss)
+
+    Error = ca.sqrt((x_e_1[mpc_iter]-ss[0,mpc_iter])**2 + (y_e_1[mpc_iter]-ss[1,mpc_iter])**2)
+    print(Error)
+
     for i in range(700):
-        error[i] = ca.sqrt((x_e_1[i + 1] - ss[0, i + 1]) ** 2 + (y_e_1[i + 1] - ss[1, i + 1]) ** 2)
+        error[i] = ca.sqrt((x_e_1[i+1]-ss[0,i])**2 + (y_e_1[i+1]-ss[1,i])**2)
 
     error1 = np.array(error)
     #print(sum(error1))
-    Error = sum(error1)
+    #Error = sum(error1)
     return Error, x0[0:3]  # mpc functions returns error of specific iteration so agent can calculate reward
 
 
