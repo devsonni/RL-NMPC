@@ -95,9 +95,6 @@ def MPC(w1, w2):
     T = 0.2  # discrete step
     N = 15  # number of look ahead steps
 
-    w1 = 1
-    w2 = 2
-    
     # Constrains of UAV with gimbal
     # input constrains of UAV
     v_u_min = 14
@@ -346,9 +343,7 @@ def MPC(w1, w2):
     x_e_1 = ca.DM.zeros((801))
     y_e_1 = ca.DM.zeros((801))
 
-    global x0
-    global xs
-    global mpc_iter
+    global mpc_iter, error, x0, xs
 
     #xx[:, 0] = x0
     #ss[:, 0] = xs
@@ -409,20 +404,17 @@ def MPC(w1, w2):
             x_e_1[mpc_iter] = x0[0] + a_p + x0[2] * (tan(x0[6] - VFOV / 2))
             y_e_1[mpc_iter] = x0[1] + b_p + x0[2] * (tan(x0[5] - HFOV / 2))
 
-    error = ca.DM.zeros(701)
-    print(x_e_1)
-    print(y_e_1)
-    print(ss)
+    #print(x_e_1)
+    #print(y_e_1)
+    #print(ss)
 
     Error = ca.sqrt((x_e_1[mpc_iter]-ss[0,mpc_iter])**2 + (y_e_1[mpc_iter]-ss[1,mpc_iter])**2)
-    print(Error)
+    #print(Error)
+    error[mpc_iter-1] = Error
 
-    for i in range(700):
-        error[i] = ca.sqrt((x_e_1[i+1]-ss[0,i])**2 + (y_e_1[i+1]-ss[1,i])**2)
-
-    error1 = np.array(error)
-    #print(sum(error1))
-    #Error = sum(error1)
+    error = np.array(error)
+    #print(error)
+    #Error = sum(error)
     return Error, x0[0:3]  # mpc functions returns error of specific iteration so agent can calculate reward
 
 
@@ -480,9 +472,8 @@ class Tunning(Env):
 
     def reset(self):
         # Reset UAV & target to initial position
-        global x0
-        global xs
-        global mpc_iter
+        global x0, xs, mpc_iter, error
+        error = ca.DM.zeros(701)
         x0 = [90, 150, 80, 0, 0, 0, 0, 0]
         xs = [100, 150, 0]
         mpc_iter = 0
@@ -532,7 +523,7 @@ print(max_index(qtable[5, :, :]))
 
 
 # Q - learning parameters
-total_episodes = 200          # Total episodes
+total_episodes = 100          # Total episodes
 learning_rate = 0.8           # Learning rate
 max_steps = 50                # Max steps per episode
 gamma = 0.95                  # Discounting rate
@@ -647,7 +638,7 @@ ax.set_title('Weights Evolving Over Episodes')
 #plotting rewards
 fig = plt.figure()
 plt.plot(rewardarr[0,0:max_steps], color = "blue")
-plt.plot(rewardarr[0,0:max_steps], color = "green")
+plt.plot(rewardarr[50,0:max_steps], color = "green")
 plt.plot(rewardarr[total_episodes-1,0:max_steps], color = "red")
 plt.legend(loc=4)
 plt.legend(['Initial Episode', 'Intermediate Episode', 'Last Episode'])
@@ -656,3 +647,5 @@ plt.xlabel('Steps') # X-Label
 plt.ylabel('Rewards') # Y-Label
 
 plt.show()
+
+
