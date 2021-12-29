@@ -53,10 +53,10 @@ Episode termination:
 ##################### MPC and Supportive functions ######################
 
 # Global MPC variables
-x0 = [90, 150, 80, 0, 0, 0, 0, 0]  # initial UAV states
+x0 = [97, 150, 80, 0, 0, 0, 0, 0]  # initial UAV states
 xs = [100, 150, 0]  # initial target state
 mpc_iter = 0  # initial MPC count
-
+max_step_size = 25
 
 # function to shift MPC one step ahead
 def shift_timestep(T, t0, x0, u, f_u, xs):
@@ -349,7 +349,7 @@ def MPC(w1, w2):
 
     u0 = ca.DM.zeros((n_controls, N))  # initial control
     xx = ca.DM.zeros((8, 801))  # change size according to main loop run, works as tracker for target and UAV
-    ss = ca.DM.zeros((3, 801))
+    #ss = ca.DM.zeros((3, 801))
     x_e_1 = ca.DM.zeros((801))
     y_e_1 = ca.DM.zeros((801))
 
@@ -365,6 +365,7 @@ def MPC(w1, w2):
 
     if __name__ == '__main__':
             t1 = time()
+            ss[:, mpc_iter] = xs
             args['p'] = ca.vertcat(
                 x0,  # current state
                 xs  # target state
@@ -401,7 +402,6 @@ def MPC(w1, w2):
 
             # tracking states of target and UAV for plotting
             xx[:, mpc_iter + 1] = x0
-            ss[:, mpc_iter + 1] = xs
 
             # xx ...
             t2 = time()
@@ -420,7 +420,7 @@ def MPC(w1, w2):
 
             error = ca.DM.zeros(701)
 
-            Error = ca.sqrt((x_e_1[mpc_iter] - ss[0, mpc_iter]) ** 2 + (y_e_1[mpc_iter] - ss[1, mpc_iter]) ** 2)
+            Error = ca.sqrt((x_e_1[mpc_iter] - ss[0, mpc_iter-1]) ** 2 + (y_e_1[mpc_iter] - ss[1, mpc_iter-1]) ** 2)
             #print(Error)
     return Error, x0[0:3]  # mpc functions returns error of specific iteration so agent can calculate reward
 
@@ -443,7 +443,8 @@ class Tunning(Env):
         )
         self.observation_space = Box(-high, high, dtype=np.float32)
         # Episode length
-        self.episode_length = 25
+        global max_step_size
+        self.episode_length = max_step_size
 
     def step(self, action):
 
@@ -452,12 +453,13 @@ class Tunning(Env):
 
         # Calculate reward
         if (action[0] == 0 or action[1] == 0):
-            error, obs = MPC(action[0], action[1])
+            error, obs = MPC(1, 1)
             print("It's 0, -2 reward")
-            reward = -0.1
+            reward = -2
         else:
             error, obs = MPC(action[0], action[1])
             reward = 1/error
+            #print(error)
             print(reward)
 
         # Check if episode is done or not
@@ -470,7 +472,7 @@ class Tunning(Env):
         info = {}
 
         # Return step information
-        return obs, reward, done, info
+        return obs, reward, done, info, error
 
     def render(self):
         # Implement viz
@@ -478,11 +480,12 @@ class Tunning(Env):
 
     def reset(self):
         # Reset UAV & target to initial position
-        global x0, xs, mpc_iter
-        x0 = [90, 150, 80, 0, 0, 0, 0, 0]
+        global x0, xs, mpc_iter, max_step_size, ss
+        x0 = [97, 150, 80, 0, 0, 0, 0, 0]
         xs = [100, 150, 0]
         mpc_iter = 0
-        self.episode_length = 25
+        ss = ca.DM.zeros((3, 801))
+        self.episode_length = max_step_size
 
 
 env = Tunning()
@@ -505,8 +508,7 @@ for episode in range(1, episodes + 1):
 """
 #################################################################
 ########################### Q-learning ##########################
-
-step_size = 26  # Change according to main loop run
+step_size = max_step_size+1  # Change according to main loop run
 
 qtable = np.zeros((step_size, 101, 101))
 """
@@ -527,15 +529,15 @@ print(max_index(qtable[5, :, :]))
 
 # Q - learning parameters
 total_episodes = 20000  # Total episodes
-learning_rate = 0.8  # Learning rate
-max_steps = 25  # Max steps per episode
-gamma = 0.9  # Discounting rate
+learning_rate = 1  # Learning rate
+max_steps = max_step_size  # Max steps per episode
+gamma = 0.95  # Discounting rate
 
 # Exploration parameters
 epsilon = 1.0  # Exploration rate
 max_epsilon = 1.0  # Exploration probability at start
-min_epsilon = 0.01  # Minimum exploration probability
-decay_rate = 0.0015  # Exponential decay rate for exploration prob
+min_epsilon = 0.03  # Minimum exploration probability
+decay_rate = 0.00009   # Exponential decay rate for exploration prob
 
 # List of rewards
 rewards = []
@@ -543,6 +545,8 @@ rewardarr = np.zeros((total_episodes, max_steps))
 errorarr = np.zeros((total_episodes, max_steps))
 erroravg = np.zeros((total_episodes))
 rewardavg = np.zeros((total_episodes))
+maxreward = np.zeros((max_steps))
+minerrorarr = np.zeros((max_steps))
 action_str = np.zeros((max_steps + 1, 2))
 w_1 = np.zeros((max_steps, total_episodes))
 w_2 = np.zeros((max_steps, total_episodes))
@@ -564,7 +568,7 @@ x, y = np.meshgrid(x_s, y_s)
 for episode in range(total_episodes):
     # Reset the environment
     #global x0, xs
-    print('\n--------We are in episode {}, 50 steps will be run--------\n'.format(episode + 1))
+    print('\n-------- We are in episode {}, {} steps will be run --------\n'.format(episode + 1, max_steps))
 
     env.reset()
     step = 0
@@ -583,10 +587,12 @@ for episode in range(total_episodes):
 
         # Else doing a random choice --> exploration
         else:
-            action = env.action_space.sample()
+            action = (0,0)
+            while(action[0] == 0 or action[1] == 0):
+                action = env.action_space.sample()
 
         # Take the action (a) and observe the outcome state(s') and reward (r)
-        new_state, reward, done, info = env.step(action)
+        new_state, reward, done, info, error = env.step(action)
 
 
         # Update Q(s,a):= Q(s,a) + lr [R(s,a) + gamma * max Q(s',a') - Q(s,a)]
@@ -601,29 +607,49 @@ for episode in range(total_episodes):
         step += 1
         total_rewards += reward
         rewardarr[episode, step - 1] = reward
-        errorarr[episode, step - 1] = (1/reward)
+        errorarr[episode, step - 1] = error
 
         w_1[step - 1, episode] = action[0]
         w_2[step - 1, episode] = action[1]
+
+        if (episode > 18000):
+            min_epsilon = 0.001
+            decay_rate = 0.02
 
         if (episode == (total_episodes - 1)):
             action_str[step, 0] = action[0]
             action_str[step, 1] = action[1]
 
-    erroravg[episode] = (sum(errorarr[episode,:])/25)
-    rewardavg[episode] = (sum(rewardarr[episode,:])/25)
+    erroravg[episode] = (sum(errorarr[episode,:]))
+    rewardavg[episode] = (sum(rewardarr[episode,:]))
 
     # Reduce epsilon (because we need less and less exploration)
     epsilon = min_epsilon + (max_epsilon - min_epsilon) * np.exp(-decay_rate * episode)
     rewards.append(total_rewards)
 
+
+
+Error = 0
+env.reset()
 #Printing Optimal Policy
-for i in range(25):
+for i in range(max_step_size):
+    action = max_index(qtable[i, :, :])
+    new_state, reward, done, info, error = env.step(action)
+    maxreward[i] = reward
+    minerrorarr[i] = error
+    Error += error
     print(max_index(qtable[i, :, :]))
+
+print(Error)
 
 ################################################################
 ############# Plotting the reward & printing actions ###########
 last_action = action_str[1:51, 0:2]
+sum_first_episode = sum(errorarr[0, 0:max_steps])
+sum_last_episode = sum(errorarr[total_episodes-1, 0:max_steps])
+sum_optimal_policy = sum(minerrorarr)
+x_axis_bar = ['Error of First Episode', 'Error of Last Episode', 'Error of Optimal Policy']
+y_axis_bar = [sum_first_episode, sum_last_episode, sum_optimal_policy]
 
 # Printing actions
 #print(last_action)
@@ -653,23 +679,36 @@ ax.set_title('Weights Evolving Over Episodes')
 fig = plt.figure()
 plt.plot(rewardarr[0, 0:max_steps], color="blue")
 plt.plot(rewardarr[total_episodes//2, 0:max_steps], color="green")
-plt.plot(rewardarr[total_episodes - 1, 0:max_steps], color="red")
+plt.plot(rewardarr[total_episodes-1, 0:max_steps], color="brown")
+plt.plot(maxreward, color="red")
 plt.legend(loc=4)
-plt.legend(['Initial Episode', 'Intermediate Episode', 'Last Episode'])
+plt.legend(['Initial Episode', 'Intermediate Episode', 'Last Episode', 'Reward of Optimal Policy'])
 plt.title('Rewards In Each Steps')  # Title of the plot
 plt.xlabel('Steps')  # X-Label
 plt.ylabel('Rewards')  # Y-Label
 
 fig = plt.figure()
 plt.plot(rewardavg, color="blue")
-plt.title('Average Reward')  # Title of the plot
+plt.title('Sum of Reward')  # Title of the plot
 plt.xlabel('Episode')  # X-Label
-plt.ylabel('Average Reward')  # Y-Label
+plt.ylabel('Sum of Reward')  # Y-Label
 
 fig = plt.figure()
 plt.plot(erroravg, color="blue")
-plt.title('Average Error')  # Title of the plot
+plt.title('Sum of Error')  # Title of the plot
 plt.xlabel('Episode')  # X-Label
-plt.ylabel('Average Error')  # Y-Label
+plt.ylabel('Sum of Error')  # Y-Label
+
+fig = plt.figure()
+plt.subplot(121)
+plt.plot(errorarr[0, 0:max_steps], color="red")
+plt.plot(errorarr[total_episodes-1, 0:max_steps], color="blue")
+plt.legend(loc=4)
+plt.legend(['First Episode Error', 'Last Episode Error'])
+plt.title('Error Plot')  # Title of the plot
+plt.xlabel('Steps')  # X-Label
+plt.ylabel('Error')  # Y-Label
+plt.subplot(122)
+plt.bar(x_axis_bar, y_axis_bar)
 
 plt.show()
