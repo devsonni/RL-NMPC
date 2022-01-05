@@ -528,16 +528,16 @@ print(max_index(qtable[5, :, :]))
 """
 
 # Q - learning parameters
-total_episodes = 20000  # Total episodes
-learning_rate = 1  # Learning rate
+total_episodes = 10000  # Total episodes
+learning_rate =  1 # Learning rate 0.8 is good
 max_steps = max_step_size  # Max steps per episode
-gamma = 0.95  # Discounting rate
+gamma = 0.1  # Discounting rate 0.1 is good
 
 # Exploration parameters
 epsilon = 1.0  # Exploration rate
 max_epsilon = 1.0  # Exploration probability at start
 min_epsilon = 0.03  # Minimum exploration probability
-decay_rate = 0.00009   # Exponential decay rate for exploration prob
+decay_rate = 0.00052   # Exponential decay rate for exploration prob
 
 # List of rewards
 rewards = []
@@ -584,6 +584,7 @@ for episode in range(total_episodes):
         ## If this number > greater than epsilon --> exploitation (taking the biggest Q value for this state)
         if exp_exp_tradeoff > epsilon:
             action = max_index(qtable[step, :, :])
+            #print("Exploit")
 
         # Else doing a random choice --> exploration
         else:
