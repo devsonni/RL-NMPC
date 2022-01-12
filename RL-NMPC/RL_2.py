@@ -680,6 +680,12 @@ y_e_w_rl = np.array(y_e_w_rl)
 print('Error without RL: {}'.format(Error))
 
 ################################################################
+################### Saving all required arrays #################
+
+np.savez("1k_1_01_500.npz", errorarr=errorarr, w_1=w_1, w_2=w_2, erroravg=erroravg, rewardavg=rewardavg, rewardarr=rewardarr, qtable=qtable)
+
+
+################################################################
 ############# Plotting the reward & printing actions ###########
 last_action = action_str[1:51, 0:2]
 sum_without_rl = sum(error_w_rl)
@@ -740,10 +746,10 @@ plt.ylabel('Sum of Error')  # Y-Label
 fig = plt.figure()
 plt.subplot(121)
 plt.plot(errorarr[0, 0:max_steps], color="red")
-plt.plot(errorarr[total_episodes-1, 0:max_steps], color="blue")
+plt.plot(minerrorarr[0:max_steps], color="blue")
 plt.plot(error_w_rl[0:max_steps], color="brown")
 plt.legend(loc=4)
-plt.legend(['First Episode Error', 'Last Episode Error', 'Error without RL'])
+plt.legend(['First Episode Error', 'Error of Optimal Policy', 'Error without RL'])
 plt.title('Error Plot')  # Title of the plot
 plt.xlabel('Steps')  # X-Label
 plt.ylabel('Error')  # Y-Label
