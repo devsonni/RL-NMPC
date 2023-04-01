@@ -24,7 +24,7 @@ mpc_iter = 0  # initial MPC count
 max_step_size = 1426 * 2
 sc = 0
 ss1 = np.zeros((max_step_size + 1000))
-x_o_1 = 90 + 100 + 60 +25
+x_o_1 = 90 + 100 + 60 + 25
 y_o_1 = 400 + 20
 x_o_2 = -75 + 20
 y_o_2 = 500 + 20
@@ -65,7 +65,7 @@ y_o_10 = 1000
 # x_o_10 = 1000
 # y_o_10 = 1000
 obs_r = 30
-UAV_r = 1
+UAV_r = 2
 
 # Adding global variable for increasing speed of the code
 # mpc parameters
@@ -594,6 +594,7 @@ opts = {
 }
 
 solver = ca.nlpsol('solver', 'ipopt', nlp_prob, opts)
+# solver.stats()
 
 args = {
     'lbg': lbg,  # lower bound for state
@@ -923,7 +924,7 @@ qtable1 = np.zeros((step_size, 101, 101, 101))
 qtable2 = np.zeros((step_size, 101, 101, 101))
 
 # Q - learning parameters
-total_episodes = 1  # 50 Total episodes
+total_episodes = 500  # 50 Total episodes
 learning_rate = 0.9  # Learning rate 0.8 is good
 max_steps = max_step_size  # Max steps per episode
 gamma = 0.8  # Discounting rate 0.1 is good
@@ -931,7 +932,7 @@ gamma = 0.8  # Discounting rate 0.1 is good
 # Exploration parameters
 epsilon = 1.0  # Exploration rate
 max_epsilon = 1.0  # Exploration probability at start
-min_epsilon = 0.5  # Minimum exploration probability
+min_epsilon = 0.2  # Minimum exploration probability
 decay_rate = 0.009  # Exponential decay rate for exploration prob
 
 # List and array of rewards, errors etc.
@@ -1056,8 +1057,8 @@ for episode in range(total_episodes):
         w_6[step - 1, episode] = action[5]
         w_7[step - 1, episode] = action[6]
 
-    erroravg[episode] = (sum(errorarr[episode, :]) / max_step_size)
-    rewardavg[episode] = (sum(rewardarr[episode, :]) / max_step_size)
+    erroravg[episode] = (sum(errorarr[episode, :]))
+    rewardavg[episode] = (sum(rewardarr[episode, :]))
     print(sum(errorarr[episode, :]))
 
     # Reduce epsilon (because we need less and less exploration)
@@ -1119,22 +1120,22 @@ print('Error of Optimal Policy: {}'.format(Error))
 #############################################################
 
 # for without RL error and trajectory
-# Error = 0
-# env.reset()
-# UAV_W_RL[:, 0] = x0[0:n_states_u]
-# # Printing Optimal Policy
-# for i in range(max_step_size):
-#     action = (1, 1, 1, 1, 1, 1, 1)
-#     # mpc_iter = mpc_iter + 1
-#     new_state, obs2, reward, reward1, done, info, error, error1, error3, a_p, b_p, x_e, y_e, a_p_1, \
-#     b_p_1, x_e_1, y_e_1 = env.step(action)
-#     UAV1_WRL_Err[i] = error
-#     UAV2_WRL_Err[i] = error1
-#     # UAV3_WRL_Err[i] = error2
-#     UAV_W_RL[:, i + 1] = new_state
-#     error_w_rl[i] = error3
-#     Error += error3
-#     print(i)
+Error = 0
+env.reset()
+UAV_W_RL[:, 0] = x0[0:n_states_u]
+# Printing Optimal Policy
+for i in range(max_step_size):
+    action = (1, 1, 1, 1, 1, 1, 1)
+    # mpc_iter = mpc_iter + 1
+    new_state, obs2, reward, reward1, done, info, error, error1, error3, a_p, b_p, x_e, y_e, a_p_1, \
+    b_p_1, x_e_1, y_e_1 = env.step(action)
+    UAV1_WRL_Err[i] = error
+    UAV2_WRL_Err[i] = error1
+    # UAV3_WRL_Err[i] = error2
+    UAV_W_RL[:, i + 1] = new_state
+    error_w_rl[i] = error3
+    Error += error3
+    print(i)
 
 dist4 = ca.DM.zeros(max_step_size + 1)
 for i in range(max_step_size):
@@ -1163,11 +1164,9 @@ print('Error without RL: {}'.format(Error))
 ################################################################
 ################### Saving all required arrays #################
 
-# np.savez("Jo_test_150ep_final_high_speed.npz", errorarr=errorarr, w_1=w_1, w_2=w_2, w_3=w_3, w_4=w_4, w_5=w_5, w_6=w_6,
-#          erroravg=erroravg,
-#          rewardavg=rewardavg, rewardarr=rewardarr, qtable=qtable, qtable2=qtable2, qtable3=qtable3, qtable4=qtable4,
-#          qtable5=qtable5, qtable1=qtable1, total_episodes=total_episodes,
-#          max_step_size=max_step_size)
+np.savez("Journal_500_09_08_009_del.npz", errorarr=errorarr, w_1=w_1, w_2=w_2, w_3=w_3, w_4=w_4, w_5=w_5, w_6=w_6,
+         erroravg=erroravg, w_7=w_7, rewardavg=rewardavg, rewardarr=rewardarr, qtable=qtable, qtable2=qtable2,
+         qtable1=qtable1, total_episodes=total_episodes, max_step_size=max_step_size)
 
 # Collecing data of obstacles for plotting cylinders
 Xc_1, Yc_1, Zc_1 = data_for_cylinder_along_z(x_o_1, y_o_1, obs_r, 250)
