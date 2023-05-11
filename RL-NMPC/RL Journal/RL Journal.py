@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import casadi as ca
 from casadi import sin, cos, pi, tan
 from mayavi import mlab
+from mpl_toolkits.mplot3d import Axes3D
 
 # from tvtk.api import tvtk
 # from mayavi.modules.api import Outline
@@ -284,6 +285,7 @@ rhs_u = ca.vertcat(
     a_u_1
 )
 
+# real RHS
 rel_rhs_u = ca.vertcat(
     rel_v_u * cos(rel_psi_u) * cos(rel_theta_u),
     0.7 + rel_v_u * sin(rel_psi_u) * cos(rel_theta_u),
@@ -924,7 +926,7 @@ qtable1 = np.zeros((step_size, 101, 101, 101))
 qtable2 = np.zeros((step_size, 101, 101, 101))
 
 # Q - learning parameters
-total_episodes = 500  # 50 Total episodes
+total_episodes = 500 # 50 Total episodes
 learning_rate = 0.9  # Learning rate 0.8 is good
 max_steps = max_step_size  # Max steps per episode
 gamma = 0.8  # Discounting rate 0.1 is good
@@ -984,7 +986,7 @@ for i in range(max_steps):
 
 x, y = np.meshgrid(x_s, y_s)
 
-# 2 For life or until learning is stopped
+# main RL loop
 for episode in range(total_episodes):
     # Reset the environment
     # global x0, xs
@@ -995,6 +997,8 @@ for episode in range(total_episodes):
     done = False
     total_rewards = 0
     # print(qtable)
+    old_weight1 = 1 # At starting of the episode UAV is set to 1st mode 
+    shift_lim = 10 # Limit on shifting of mode
 
     while not done:
         # 3. Choose an action a in the current world state (s)
@@ -1003,9 +1007,9 @@ for episode in range(total_episodes):
 
         ## If this number > greater than epsilon --> exploitation (taking the biggest Q value for this state)
         if exp_exp_tradeoff > epsilon:
-            action1 = max_index(qtable[step, :, :])
-            action2 = max_index_3(qtable1[step, :, :, :])
-            action3 = max_index_3(qtable2[step, :, :, :])
+            action1 = max_index(qtable[step, :, :]) # step, action, action
+            action2 = max_index_3(qtable1[step, :, :, :]) # step, weight1, weight2, weight3
+            action3 = max_index_3(qtable2[step, :, :, :]) # setp, weight4, weight5, weight6
             action = (action1[0], action2[0], action2[1], action2[2], action3[0], action3[1], action3[2])
             print("Exploit")
 
@@ -1016,6 +1020,21 @@ for episode in range(total_episodes):
             while (action[0] == 0 or action[1] == 0 or action[2] == 0 or action[3] == 0 or action[4] == 0 or
                    action[5] == 0 or action[6] == 0):
                 action = env.action_space.sample()
+            exp_shift = random.uniform(0, 500)
+            print(shift_lim)
+            if ((53 <= exp_shift <= 55) and (shift_lim > 0)):
+                shift_lim = shift_lim - 1
+                old_weight1 = action[0]
+                print("mode explored")
+                print(shift_lim)
+            else:
+                print("mode exploit")
+                action = list(action)
+                action[0] = old_weight1
+                action = tuple(action)
+                print(shift_lim)
+
+
 
         # Take the action (a) and observe the outcome state(s') and reward (r)
         new_state, obs2, reward, reward1, done, info, error, error1, error3, a_p, b_p, x_e, y_e, a_p_1, \
@@ -1320,7 +1339,8 @@ UAV_W_RL = np.array(UAV_W_RL)
 targetarr = np.array(targetarr)
 
 fig = plt.figure()
-ax = plt.axes(projection='3d')
+# ax = plt.axes(projection='3d')
+ax = fig.gca(projection='3d')
 ax.plot3D(UAV_RL[0, 0:max_steps], UAV_RL[1, 0:max_steps], UAV_RL[2, 0:max_steps], linewidth="2", color="brown")
 ax.plot3D(UAV_W_RL[0, 0:max_steps], UAV_W_RL[1, 0:max_steps], UAV_W_RL[2, 0:max_steps], linewidth="2", color="blue")
 ax.plot3D(targetarr[0, 0:max_steps], targetarr[1, 0:max_steps], ss1[0:max_steps], '--', linewidth="2", color="red")
