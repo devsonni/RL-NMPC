@@ -20,51 +20,39 @@ gym.logger.set_level(40)
 
 # Global MPC variables
 x0 = [100, 150, 200, 0, 0, 0, 0, 0, 100, 200, 200, 0, 0, 0, 0, 0, 0, 0]
-xs = [100, 150, pi / 4, 120, 200, pi / 4, 140, 250, pi / 4]
+xs = [100, 150, pi / 4, 120, 270, pi / 4, 140, 390, pi / 4]
 mpc_iter = 0  # initial MPC count
 max_step_size = 1426 * 2
 sc = 0
 ss1 = np.zeros((max_step_size + 1000))
-x_o_1 = 90 + 100 + 60 + 25
-y_o_1 = 400 + 20
-x_o_2 = -75 + 20
-y_o_2 = 500 + 20
-x_o_3 = -425 - 20 + 15
-y_o_3 = 400
-x_o_4 = -160 - 100 + 30
-y_o_4 = -10 + 50 - 30 + 20
-x_o_5 = 15 + 100 - 30
-y_o_5 = -10 + 50 - 30 + 20
-x_o_6 = 200 + 70
-y_o_6 = -330 - 30
-x_o_8 = -390 - 20 + 10
-y_o_8 = -330 - 30
-x_o_7 = -80
-y_o_7 = -480 + 20
+x_o_1 = -55 #top up
+y_o_1 = 770
+x_o_2 = 1000 #top down
+y_o_2 = 1000
+# x_o_2 = -55 #top down
+# y_o_2 = 640
+x_o_3 = -200 + 60 -30 -30 #middle left down
+y_o_3 = 60 + 50 +20 + 20
+# x_o_3 = -200 + 60 -30 -30 #middle left down
+# y_o_3 = 60 + 50 +20 + 20
+x_o_4 = 1000 #middle left up
+y_o_4 = 1000
+# x_o_4 = -200 + 60 -30 - 30 + 60 + 5 #middle left up
+# y_o_4 = 60 + 50 +20 + 20 + 100 + 5
+x_o_5 = 85 #right middle up
+y_o_5 = 20 - 5
+x_o_6 = 1000 
+y_o_6 = 1000 #bottom top
+# x_o_6 = -55 
+# y_o_6 = -330 - 30
+x_o_7 = -55
+y_o_7 = -480 + 20 #bottom bottom
+x_o_8 = 1000 #right middle low
+y_o_8 = 1000
 x_o_9 = 1000
 y_o_9 = 1000
 x_o_10 = 1000
 y_o_10 = 1000
-# x_o_1 = 1000
-# y_o_1 = 1000
-# x_o_2 = 1000
-# y_o_2 = 1000
-# x_o_3 = 1000
-# y_o_3 = 1000
-# x_o_4 = 1000
-# y_o_4 = 1000
-# x_o_5 = 1000
-# y_o_5 = 1000
-# x_o_6 = 1000
-# y_o_6 = 1000
-# x_o_8 = 1000
-# y_o_8 = 1000
-# x_o_7 = 1000
-# y_o_7 = 1000
-# x_o_9 = 1000
-# y_o_9 = 1000
-# x_o_10 = 1000
-# y_o_10 = 1000
 obs_r = 30
 UAV_r = 2
 
@@ -909,7 +897,7 @@ class Tunning(Env):
         # Reset UAV & target to initial position
         global x0, xs, mpc_iter, max_step_size, ss, sc
         x0 = [100, 150, 200, 0, 0, 0, 0, 0, 100, 200, 200, 0, 0, 0, 0, 0, 0, 0]
-        xs = [100, 150, pi / 4, 120, 200, pi / 4, 140, 250, pi / 4]
+        xs = [100, 150, pi / 4, 120, 270, pi / 4, 140, 390, pi / 4]
         sc = 0
         mpc_iter = 0
         ss = ca.DM.zeros((3 + 3 + 3, max_step_size))
@@ -1151,6 +1139,7 @@ for i in range(max_step_size):
     UAV1_WRL_Err[i] = error
     UAV2_WRL_Err[i] = error1
     # UAV3_WRL_Err[i] = error2
+    targetarr[:, i + 1] = obs2
     UAV_W_RL[:, i + 1] = new_state
     error_w_rl[i] = error3
     Error += error3
@@ -1234,7 +1223,7 @@ x_ax_uav_f = ['Total Error without RL', 'Total Error of OptimalPolicy', 'Total E
 y_ax_uav_f = [sum_without_rl, sum_optimal_policy, sum_optimal_policy_1]
 
 # Printing actions
-# print(last_action)
+print(last_action)
 my_cmap = plt.get_cmap('cool')
 
 # plotting actions evolving over episodes for w_1
@@ -1412,20 +1401,19 @@ mlab.plot3d(x_e_rl_1[0:100, 0], y_e_rl_1[0:100, 0], ss1[0:100], tube_radius=3, c
 mlab.plot3d(x_e_w_rl_1[0:100, 0], y_e_w_rl_1[0:100, 0], ss1[0:100], tube_radius=3, color=(1, 1, 1))
 
 mlab.mesh(Xc_1, Yc_1, Zc_1)
-mlab.mesh(Xc_2, Yc_2, Zc_2)
+# mlab.mesh(Xc_2, Yc_2, Zc_2)
 mlab.mesh(Xc_3, Yc_3, Zc_3)
-mlab.mesh(Xc_4, Yc_4, Zc_4)
+# mlab.mesh(Xc_4, Yc_4, Zc_4)
 mlab.mesh(Xc_5, Yc_5, Zc_5)
-mlab.mesh(Xc_6, Yc_6, Zc_6)
+# mlab.mesh(Xc_6, Yc_6, Zc_6)
 mlab.mesh(Xc_7, Yc_7, Zc_7)
-mlab.mesh(Xc_8, Yc_8, Zc_8)
-mlab.mesh(Xc_9, Yc_9, Zc_9)
-mlab.mesh(Xc_10, Yc_10, Zc_10)
+# mlab.mesh(Xc_8, Yc_8, Zc_8)
 
 mlab.title('Tracking UAV')
 s = [0, 1900, -300, 1000, 0, 170]
 mlab.orientation_axes(xlabel='X-axis', ylabel='Y-axis', zlabel='Z-axis')
 mlab.outline(color=(0, 0, 0), extent=s)
 mlab.axes(color=(0, 0, 0), extent=s)
+
 plt.show()
 mlab.show()
